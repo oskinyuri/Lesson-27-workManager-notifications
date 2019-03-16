@@ -41,4 +41,9 @@ dependencies {
     implementation "android.arch.persistence.room:runtime:$room_version"
     annotationProcessor "android.arch.persistence.room:compiler:$room_version"
     testImplementation "android.arch.persistence.room:testing:$room_version"
+
+    //WorkManager
+    def work_version = "1.0.0"
+    implementation "android.arch.work:work-runtime:$work_version"
 }
+

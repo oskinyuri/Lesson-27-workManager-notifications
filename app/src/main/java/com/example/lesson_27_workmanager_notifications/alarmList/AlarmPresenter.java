@@ -2,26 +2,30 @@ package com.example.lesson_27_workmanager_notifications.alarmList;
 
 import android.app.TimePickerDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.format.DateFormat;
-import android.widget.AdapterView;
-import android.widget.TimePicker;
+import android.util.Log;
 
-import com.example.lesson_27_workmanager_notifications.dataSource.AlarmsDataSource;
+import com.example.lesson_27_workmanager_notifications.AlarmApp;
 import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
+import com.example.lesson_27_workmanager_notifications.repository.AlarmRepository;
+import com.example.lesson_27_workmanager_notifications.workManager.AlarmWorker;
 
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-public class AlarmPresenter {
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
-    private AlarmsDataSource mDataSource;
+public class AlarmPresenter implements UpdateAlarmCallback {
 
+    private AlarmRepository mAlarmRepository;
     private Context mContext;
     private AlarmView mView;
     private List<AlarmEntity> mData;
@@ -33,13 +37,16 @@ public class AlarmPresenter {
 
     private Handler mHandler;
 
-    private AlarmEntity mCurrentAllarm;
+    private AlarmEntity mCurrentAlarm;
 
     public AlarmPresenter(Context context) {
         mContext = context;
         mHandler = new Handler(Looper.getMainLooper());
         mExecutorService = Executors.newCachedThreadPool();
-        mDataSource = new AlarmsDataSource(mContext.getApplicationContext());
+
+        mAlarmRepository = AlarmApp.getInstance().getAlarmRepository();
+        mAlarmRepository.setUpdateCallback(this);
+
         initListener();
     }
 
@@ -49,7 +56,14 @@ public class AlarmPresenter {
         if (mView == null)
             return;
 
-        updateData();
+        loadData();
+    }
+
+    private void loadData() {
+        mExecutorService.execute(() -> {
+            mData = mAlarmRepository.getAlarms();
+            mHandler.post(this::setData);
+        });
     }
 
     public void onDetach() {
@@ -64,28 +78,27 @@ public class AlarmPresenter {
             alarmEntity.setActive(true);
 
             mExecutorService.execute(() -> {
-                mDataSource.addAlarm(alarmEntity);
-                updateData();
-            });
 
-            //TODO изменить данные
-            //TODO create worker
-            //TODO обратиться к базе данных за новыми данными
+                String workerId = createWorker(alarmEntity);
+                alarmEntity.setWorkerID(workerId);
+                mAlarmRepository.addAlarm(alarmEntity);
+                Log.v("AlarmApp", "Create alarm: Alarm id         : " + UUID.fromString(alarmEntity.getId()));
+                Log.v("AlarmApp", "Create alarm: Alarm's worker id: " + UUID.fromString(alarmEntity.getWorkerID()));
+            });
         };
 
         mChangeAlarmListener = (view, hourOfDay, minute) -> {
-            //TODO изменить данные
-            //TODO изменить воркер
-            //TODO обратиться к базе данных за новыми данными
-
-
-            mCurrentAllarm.setHour(hourOfDay);
-            mCurrentAllarm.setMinute(minute);
-            mCurrentAllarm.setActive(true);
+            mCurrentAlarm.setHour(hourOfDay);
+            mCurrentAlarm.setMinute(minute);
+            mCurrentAlarm.setActive(true);
 
             mExecutorService.execute(() -> {
-                mDataSource.addAlarm(mCurrentAllarm);
-                updateData();
+                deleteWorker(mCurrentAlarm);
+                String workerId = createWorker(mCurrentAlarm);
+                mCurrentAlarm.setWorkerID(workerId);
+                mAlarmRepository.addAlarm(mCurrentAlarm);
+                Log.v("AlarmApp", "Change alarm: Alarm's id       : " + UUID.fromString(mCurrentAlarm.getId()));
+                Log.v("AlarmApp", "Change alarm: Alarm's worker id: " + UUID.fromString(mCurrentAlarm.getWorkerID()));
             });
         };
     }
@@ -100,16 +113,40 @@ public class AlarmPresenter {
                 .show();
     }
 
-    public void changeAlarm(int position){
-        mCurrentAllarm = mData.get(position);
-        getTimePicker(mCurrentAllarm.getHour(), mCurrentAllarm.getMinute(), mChangeAlarmListener)
+    public void changeAlarm(int position) {
+        mCurrentAlarm = mData.get(position);
+        getTimePicker(mCurrentAlarm.getHour(), mCurrentAlarm.getMinute(), mChangeAlarmListener)
                 .show();
     }
 
     public void removeAlarm(int position) {
         mExecutorService.execute(() -> {
-            mDataSource.deleteAlarm(mData.get(position));
-            updateData();
+            Log.v("AlarmApp", "Delete alarm: Alarm's id: " + mData.get(position).getId());
+            deleteWorker(mData.get(position));
+            mAlarmRepository.deleteAlarm(mData.get(position));
+        });
+    }
+
+    public void switchAlarm(int adapterPosition, boolean state) {
+        AlarmEntity alarmEntity = mData.get(adapterPosition);
+        alarmEntity.setActive(state);
+
+        mExecutorService.execute(() -> {
+            mAlarmRepository.addAlarm(alarmEntity);
+
+            if (state) {
+                String workerId = createWorker(alarmEntity);
+                alarmEntity.setWorkerID(workerId);
+                mAlarmRepository.addAlarm(alarmEntity);
+            } else {
+                deleteWorker(alarmEntity);
+                alarmEntity.setWorkerID("");
+                mAlarmRepository.addAlarm(alarmEntity);
+            }
+
+            Log.v("AlarmApp", "Change alarm's state: " + alarmEntity.isActive());
+            Log.v("AlarmApp", "Change alarm's id: " + alarmEntity.getId());
+            Log.v("AlarmApp", "Change alarm's worker id: " + alarmEntity.getWorkerID());
         });
     }
 
@@ -124,29 +161,84 @@ public class AlarmPresenter {
         return timePickerDialog;
     }
 
-    private void updateData(){
-        mExecutorService.execute(() -> {
-            mData = mDataSource.getAlarms();
-            sortData();
-            mHandler.post(this::setData);
-        });
+    @Override
+    public void updateData(List<AlarmEntity> data) {
+        mData = sortData(data);
+        mHandler.post(this::setData);
     }
 
     /**
      * Сортировка будильников по времени
      */
-    private void sortData() {
-        Collections.sort(mData, (o1, o2) -> {
+    private List<AlarmEntity> sortData(List<AlarmEntity> data) {
+        Collections.sort(data, (o1, o2) -> {
             if (o1.getHour() < o2.getHour())
                 return -1;
             else return Integer.compare(o1.getMinute(), o2.getMinute());
         });
+        return data;
     }
 
-    private void setData(){
+    private void setData() {
         if (mView == null)
             return;
         mView.setData(mData);
         mView.setViewEnabled(true);
+    }
+
+    //TODO грязный код, переделать
+
+    /**
+     * Создает задачи будильника
+     *
+     * @param alarmEntity Экземпляр будильника
+     * @return String UUID созданной задачи
+     */
+    private String createWorker(AlarmEntity alarmEntity) {
+
+        long delayTimeInSeconds = getDelayTimeInSeconds(alarmEntity);
+
+        OneTimeWorkRequest alarmRequest = new OneTimeWorkRequest.Builder(AlarmWorker.class)
+                .setInitialDelay(delayTimeInSeconds, TimeUnit.SECONDS)
+                .build();
+        WorkManager.getInstance().enqueue(alarmRequest);
+
+        return alarmRequest.getId().toString();
+    }
+
+    private long getDelayTimeInSeconds(AlarmEntity alarmEntity) {
+        int delayMinute;
+        int delayHour;
+        long delayTimeInSeconds;
+
+        if ((alarmEntity.getHour() >= Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
+                && (alarmEntity.getMinute() >= Calendar.getInstance().get(Calendar.MINUTE))) {
+
+            delayMinute = alarmEntity.getMinute() - Calendar.getInstance().get(Calendar.MINUTE);
+            delayHour = alarmEntity.getHour() - Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+            delayTimeInSeconds = (delayHour * 60 + delayMinute) * 60 - Calendar.getInstance().get(Calendar.SECOND);
+
+        } else {
+
+            delayMinute = (60 - Calendar.getInstance().get(Calendar.MINUTE)) + alarmEntity.getMinute();
+            delayHour = (24 - Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) + alarmEntity.getHour();
+            delayTimeInSeconds = (delayHour * 60 + delayMinute) * 60 - Calendar.getInstance().get(Calendar.SECOND);
+        }
+        return delayTimeInSeconds;
+    }
+
+    private void deleteWorker(AlarmEntity alarmEntity) {
+
+        if (alarmEntity.getWorkerID().equals(""))
+            return;
+
+        WorkManager workManager = WorkManager.getInstance();
+        UUID workerUUID = UUID.fromString(alarmEntity.getWorkerID());
+
+        Log.v("AlarmApp", "Delete alarm's worker: Alarm's worker id: " + alarmEntity.getWorkerID());
+
+        if (!workManager.getWorkInfoById(workerUUID).isCancelled()) {
+            workManager.cancelWorkById(workerUUID);
+        }
     }
 }

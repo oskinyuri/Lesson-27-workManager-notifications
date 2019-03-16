@@ -1,6 +1,7 @@
 package com.example.lesson_27_workmanager_notifications.alarmList;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
@@ -14,7 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-public class MainActivity extends AppCompatActivity implements AlarmView {
+public class MainActivity extends AppCompatActivity implements AlarmView , AlarmsAdapter.AlarmHolder.OnHolderClickListener {
 
     private FloatingActionButton mFab;
     private TextView mNoAlarmTextView;
@@ -44,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements AlarmView {
 
         //init Recycler
         mRecyclerView = findViewById(R.id.main_alarms_recycler);
-        mAdapter = new AlarmsAdapter(this::mRemoveItemListener);
+        mAdapter = new AlarmsAdapter(this);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(layoutManager);
         mRecyclerView.setAdapter(mAdapter);
@@ -85,8 +86,9 @@ public class MainActivity extends AppCompatActivity implements AlarmView {
         mRecyclerView.setEnabled(state);
     }
 
-    private void mRemoveItemListener(AlarmsAdapter.AlarmHolder alarmHolder, View view){
-
+    @Override
+    public void onHolderClick(AlarmsAdapter.AlarmHolder alarmHolder, View view) {
+        setViewEnabled(false);
         switch (view.getId()) {
             case R.id.item_delete_image_btn:
                 mPresenter.removeAlarm(alarmHolder.getAdapterPosition());
@@ -95,8 +97,7 @@ public class MainActivity extends AppCompatActivity implements AlarmView {
                 mPresenter.changeAlarm(alarmHolder.getAdapterPosition());
                 return;
             case R.id.item_alarm_active_switch:
-                //TODO
-                return;
+                mPresenter.switchAlarm(alarmHolder.getAdapterPosition(), alarmHolder.activeSwitch.isChecked());
         }
     }
 }

@@ -11,11 +11,11 @@ import androidx.room.PrimaryKey;
 public class AlarmEntity {
 
     //TODO почему не работает с private, почему если private требует сетер?
+
     @NonNull
     @PrimaryKey
     @ColumnInfo (name = "id")
     public String mId;
-
     @ColumnInfo (name = "hour")
     private int mHour;
 
@@ -24,6 +24,9 @@ public class AlarmEntity {
 
     @ColumnInfo (name = "active_state")
     private boolean mActive;
+
+    @ColumnInfo (name = "worker_id")
+    private String mWorkerID;
 
     public AlarmEntity(){
         mId = UUID.randomUUID().toString();
@@ -56,5 +59,13 @@ public class AlarmEntity {
 
     public void setActive(boolean active) {
         mActive = active;
+    }
+
+    public String getWorkerID() {
+        return mWorkerID;
+    }
+
+    public void setWorkerID(String workerID) {
+        mWorkerID = workerID;
     }
 }

@@ -1,4 +1,4 @@
-package com.example.lesson_27_workmanager_notifications.dataSource;
+package com.example.lesson_27_workmanager_notifications.repository.dataSource;
 
 import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
 

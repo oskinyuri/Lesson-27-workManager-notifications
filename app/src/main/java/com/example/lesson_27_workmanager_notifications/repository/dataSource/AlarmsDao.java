@@ -1,4 +1,4 @@
-package com.example.lesson_27_workmanager_notifications.dataSource;
+package com.example.lesson_27_workmanager_notifications.repository.dataSource;
 
 import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
 
@@ -21,4 +21,7 @@ public interface AlarmsDao {
 
     @Delete
     void deleteAlarm(AlarmEntity alarmEntity);
+
+    @Query("select * from alarmentity Where worker_id = :id")
+    AlarmEntity getAlarmViaWorkerID(String id);
 }

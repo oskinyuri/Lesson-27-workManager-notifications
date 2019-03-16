@@ -23,9 +23,9 @@ public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolde
     private List<AlarmEntity> mData;
 
     //test
-    private AlarmHolder.onHolderClickListener mOnHolderClickListener;
+    private AlarmHolder.OnHolderClickListener mOnHolderClickListener;
 
-    public AlarmsAdapter(AlarmHolder.onHolderClickListener holderClickListener) {
+    public AlarmsAdapter(AlarmHolder.OnHolderClickListener holderClickListener) {
         mData = new ArrayList<>();
         mOnHolderClickListener = holderClickListener;
     }
@@ -67,19 +67,19 @@ public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolde
         public Switch activeSwitch;
         public ImageButton deleteBtn;
 
-        public AlarmHolder(@NonNull View itemView, onHolderClickListener listener) {
+        public AlarmHolder(@NonNull View itemView, OnHolderClickListener listener) {
             super(itemView);
             alarmTime = itemView.findViewById(R.id.item_alarm_time_text_view);
             activeSwitch = itemView.findViewById(R.id.item_alarm_active_switch);
             deleteBtn = itemView.findViewById(R.id.item_delete_image_btn);
 
-            deleteBtn.setOnClickListener(v -> listener.onClick(AlarmHolder.this, deleteBtn));
-            alarmTime.setOnClickListener(v -> listener.onClick(AlarmHolder.this, alarmTime));
-            activeSwitch.setOnClickListener(v -> listener.onClick(AlarmHolder.this, activeSwitch));
+            deleteBtn.setOnClickListener(v -> listener.onHolderClick(AlarmHolder.this, deleteBtn));
+            alarmTime.setOnClickListener(v -> listener.onHolderClick(AlarmHolder.this, alarmTime));
+            activeSwitch.setOnClickListener(v -> listener.onHolderClick(AlarmHolder.this, activeSwitch));
         }
 
-        public interface onHolderClickListener {
-            void onClick(AlarmHolder alarmHolder, View view);
+        public interface OnHolderClickListener {
+            void onHolderClick(AlarmHolder alarmHolder, View view);
         }
     }
 

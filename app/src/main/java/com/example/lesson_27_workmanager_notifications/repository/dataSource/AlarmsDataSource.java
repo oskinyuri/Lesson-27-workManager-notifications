@@ -1,4 +1,4 @@
-package com.example.lesson_27_workmanager_notifications.dataSource;
+package com.example.lesson_27_workmanager_notifications.repository.dataSource;
 
 import android.content.Context;
 
@@ -14,21 +14,25 @@ public class AlarmsDataSource {
 
     private AlarmsDatabase mDatabase;
 
-    public AlarmsDataSource(Context context){
+    public AlarmsDataSource(Context context) {
         mDatabase = Room.databaseBuilder(context, AlarmsDatabase.class, ALARMS_DATABASE)
                 .fallbackToDestructiveMigration()
                 .build();
     }
 
-    public void addAlarm(AlarmEntity alarmEntity){
+    public void addAlarm(AlarmEntity alarmEntity) {
         mDatabase.getAlarmsDB().addAlarm(alarmEntity);
     }
 
-    public List<AlarmEntity> getAlarms(){
+    public List<AlarmEntity> getAlarms() {
         return mDatabase.getAlarmsDB().getAlarms();
     }
 
-    public void deleteAlarm(AlarmEntity alarmEntity){
+    public void deleteAlarm(AlarmEntity alarmEntity) {
         mDatabase.getAlarmsDB().deleteAlarm(alarmEntity);
+    }
+
+    public AlarmEntity getAlarm(String id) {
+        return mDatabase.getAlarmsDB().getAlarmViaWorkerID(id);
     }
 }
