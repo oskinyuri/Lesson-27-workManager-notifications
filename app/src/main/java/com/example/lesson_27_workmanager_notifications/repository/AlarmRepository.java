@@ -2,11 +2,9 @@ package com.example.lesson_27_workmanager_notifications.repository;
 
 import android.content.Context;
 
-import com.example.lesson_27_workmanager_notifications.alarmList.AlarmPresenter;
 import com.example.lesson_27_workmanager_notifications.alarmList.UpdateAlarmCallback;
 import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
 import com.example.lesson_27_workmanager_notifications.repository.dataSource.AlarmsDataSource;
-import com.example.lesson_27_workmanager_notifications.repository.dataSource.AlarmsDatabase;
 
 import java.util.List;
 
@@ -47,8 +45,8 @@ public class AlarmRepository {
         }
     }
 
-    public AlarmEntity getAlarm(String id) {
-        return mDataSource.getAlarm(id);
+    public AlarmEntity getAlarmViaWorkerID(String id) {
+        return mDataSource.getAlarmViaWorkerID(id);
     }
 
 

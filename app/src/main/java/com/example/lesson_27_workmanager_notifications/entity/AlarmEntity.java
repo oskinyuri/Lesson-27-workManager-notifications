@@ -28,6 +28,7 @@ public class AlarmEntity {
     @ColumnInfo (name = "worker_id")
     private String mWorkerID;
 
+
     public AlarmEntity(){
         mId = UUID.randomUUID().toString();
     }

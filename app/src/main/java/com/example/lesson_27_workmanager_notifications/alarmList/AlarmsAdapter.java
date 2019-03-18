@@ -1,6 +1,7 @@
 package com.example.lesson_27_workmanager_notifications.alarmList;
 
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,9 +15,11 @@ import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.UUID;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.WorkManager;
 
 public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolder> {
 
@@ -52,7 +55,14 @@ public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolde
         java.text.DateFormat dateFormat = DateFormat.getTimeFormat(holder.itemView.getContext());
         holder.alarmTime.setText(dateFormat.format(calendar.getTime().getTime()));
 
-        boolean active = mData.get(position).isActive();
+        Log.v("AlarmApp", "In adapterALARM's worker id: " + mData.get(position).getWorkerID());
+        boolean active = false;
+        try {
+            active = !WorkManager.getInstance().getWorkInfoById(UUID.fromString(mData.get(position).getWorkerID())).isDone();
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+
         holder.activeSwitch.setChecked(active);
     }
 

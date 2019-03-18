@@ -10,7 +10,7 @@ import android.util.Log;
 import com.example.lesson_27_workmanager_notifications.AlarmApp;
 import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
 import com.example.lesson_27_workmanager_notifications.repository.AlarmRepository;
-import com.example.lesson_27_workmanager_notifications.workManager.AlarmWorker;
+import com.example.lesson_27_workmanager_notifications.workManager.AlarmWorkerManager;
 
 import java.util.Calendar;
 import java.util.Collections;
@@ -18,13 +18,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
 
 public class AlarmPresenter implements UpdateAlarmCallback {
 
+    private AlarmWorkerManager mAlarmWorkerManager;
     private AlarmRepository mAlarmRepository;
     private Context mContext;
     private AlarmView mView;
@@ -46,6 +43,8 @@ public class AlarmPresenter implements UpdateAlarmCallback {
 
         mAlarmRepository = AlarmApp.getInstance().getAlarmRepository();
         mAlarmRepository.setUpdateCallback(this);
+
+        mAlarmWorkerManager = new AlarmWorkerManager();
 
         initListener();
     }
@@ -79,7 +78,7 @@ public class AlarmPresenter implements UpdateAlarmCallback {
 
             mExecutorService.execute(() -> {
 
-                String workerId = createWorker(alarmEntity);
+                String workerId = mAlarmWorkerManager.createAlarmWorker(alarmEntity);
                 alarmEntity.setWorkerID(workerId);
                 mAlarmRepository.addAlarm(alarmEntity);
                 Log.v("AlarmApp", "Create alarm: Alarm id         : " + UUID.fromString(alarmEntity.getId()));
@@ -93,8 +92,8 @@ public class AlarmPresenter implements UpdateAlarmCallback {
             mCurrentAlarm.setActive(true);
 
             mExecutorService.execute(() -> {
-                deleteWorker(mCurrentAlarm);
-                String workerId = createWorker(mCurrentAlarm);
+                mAlarmWorkerManager.deleteWorker(mCurrentAlarm);
+                String workerId = mAlarmWorkerManager.createAlarmWorker(mCurrentAlarm);
                 mCurrentAlarm.setWorkerID(workerId);
                 mAlarmRepository.addAlarm(mCurrentAlarm);
                 Log.v("AlarmApp", "Change alarm: Alarm's id       : " + UUID.fromString(mCurrentAlarm.getId()));
@@ -122,7 +121,7 @@ public class AlarmPresenter implements UpdateAlarmCallback {
     public void removeAlarm(int position) {
         mExecutorService.execute(() -> {
             Log.v("AlarmApp", "Delete alarm: Alarm's id: " + mData.get(position).getId());
-            deleteWorker(mData.get(position));
+            mAlarmWorkerManager.deleteWorker(mData.get(position));
             mAlarmRepository.deleteAlarm(mData.get(position));
         });
     }
@@ -135,12 +134,11 @@ public class AlarmPresenter implements UpdateAlarmCallback {
             mAlarmRepository.addAlarm(alarmEntity);
 
             if (state) {
-                String workerId = createWorker(alarmEntity);
+                String workerId = mAlarmWorkerManager.createAlarmWorker(alarmEntity);
                 alarmEntity.setWorkerID(workerId);
                 mAlarmRepository.addAlarm(alarmEntity);
             } else {
-                deleteWorker(alarmEntity);
-                alarmEntity.setWorkerID("");
+                mAlarmWorkerManager.deleteWorker(alarmEntity);
                 mAlarmRepository.addAlarm(alarmEntity);
             }
 
@@ -174,7 +172,13 @@ public class AlarmPresenter implements UpdateAlarmCallback {
         Collections.sort(data, (o1, o2) -> {
             if (o1.getHour() < o2.getHour())
                 return -1;
-            else return Integer.compare(o1.getMinute(), o2.getMinute());
+            else if (o1.getHour() == o2.getHour()){
+                if (o1.getMinute() < o2.getMinute())
+                    return -1;
+                else if (o1.getMinute() == o2.getMinute())
+                    return 0;
+                else return 1;
+            } else return 1;
         });
         return data;
     }
@@ -184,61 +188,5 @@ public class AlarmPresenter implements UpdateAlarmCallback {
             return;
         mView.setData(mData);
         mView.setViewEnabled(true);
-    }
-
-    //TODO грязный код, переделать
-
-    /**
-     * Создает задачи будильника
-     *
-     * @param alarmEntity Экземпляр будильника
-     * @return String UUID созданной задачи
-     */
-    private String createWorker(AlarmEntity alarmEntity) {
-
-        long delayTimeInSeconds = getDelayTimeInSeconds(alarmEntity);
-
-        OneTimeWorkRequest alarmRequest = new OneTimeWorkRequest.Builder(AlarmWorker.class)
-                .setInitialDelay(delayTimeInSeconds, TimeUnit.SECONDS)
-                .build();
-        WorkManager.getInstance().enqueue(alarmRequest);
-
-        return alarmRequest.getId().toString();
-    }
-
-    private long getDelayTimeInSeconds(AlarmEntity alarmEntity) {
-        int delayMinute;
-        int delayHour;
-        long delayTimeInSeconds;
-
-        if ((alarmEntity.getHour() >= Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
-                && (alarmEntity.getMinute() >= Calendar.getInstance().get(Calendar.MINUTE))) {
-
-            delayMinute = alarmEntity.getMinute() - Calendar.getInstance().get(Calendar.MINUTE);
-            delayHour = alarmEntity.getHour() - Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-            delayTimeInSeconds = (delayHour * 60 + delayMinute) * 60 - Calendar.getInstance().get(Calendar.SECOND);
-
-        } else {
-
-            delayMinute = (60 - Calendar.getInstance().get(Calendar.MINUTE)) + alarmEntity.getMinute();
-            delayHour = (24 - Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) + alarmEntity.getHour();
-            delayTimeInSeconds = (delayHour * 60 + delayMinute) * 60 - Calendar.getInstance().get(Calendar.SECOND);
-        }
-        return delayTimeInSeconds;
-    }
-
-    private void deleteWorker(AlarmEntity alarmEntity) {
-
-        if (alarmEntity.getWorkerID().equals(""))
-            return;
-
-        WorkManager workManager = WorkManager.getInstance();
-        UUID workerUUID = UUID.fromString(alarmEntity.getWorkerID());
-
-        Log.v("AlarmApp", "Delete alarm's worker: Alarm's worker id: " + alarmEntity.getWorkerID());
-
-        if (!workManager.getWorkInfoById(workerUUID).isCancelled()) {
-            workManager.cancelWorkById(workerUUID);
-        }
     }
 }

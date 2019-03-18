@@ -32,7 +32,7 @@ public class AlarmsDataSource {
         mDatabase.getAlarmsDB().deleteAlarm(alarmEntity);
     }
 
-    public AlarmEntity getAlarm(String id) {
+    public AlarmEntity getAlarmViaWorkerID(String id) {
         return mDatabase.getAlarmsDB().getAlarmViaWorkerID(id);
     }
 }

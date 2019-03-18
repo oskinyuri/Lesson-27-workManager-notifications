@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.lesson_27_workmanager_notifications">
 
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:name=".AlarmApp"
         android:allowBackup="true"
@@ -12,6 +13,12 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
+
+        <service
+            android:name=".AlarmForeGroundService"
+            android:enabled="true"
+            android:exported="true" />
+
         <activity android:name=".alarmList.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
