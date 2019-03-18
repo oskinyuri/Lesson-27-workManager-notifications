@@ -15,11 +15,9 @@ import com.example.lesson_27_workmanager_notifications.entity.AlarmEntity;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.UUID;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.WorkManager;
 
 public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolder> {
 
@@ -56,14 +54,12 @@ public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolde
         holder.alarmTime.setText(dateFormat.format(calendar.getTime().getTime()));
 
         Log.v("AlarmApp", "In adapterALARM's worker id: " + mData.get(position).getWorkerID());
-        boolean active = false;
-        try {
-            active = !WorkManager.getInstance().getWorkInfoById(UUID.fromString(mData.get(position).getWorkerID())).isDone();
-        } catch (Exception e){
-            e.printStackTrace();
-        }
+        holder.activeSwitch.setChecked(mData.get(position).isActive());
 
-        holder.activeSwitch.setChecked(active);
+        if (mData.get(position).isSnoozed())
+            holder.snoozedState.setVisibility(View.VISIBLE);
+        else
+            holder.snoozedState.setVisibility(View.GONE);
     }
 
     @Override
@@ -74,6 +70,7 @@ public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolde
     public static class AlarmHolder extends RecyclerView.ViewHolder {
 
         public TextView alarmTime;
+        public TextView snoozedState;
         public Switch activeSwitch;
         public ImageButton deleteBtn;
 
@@ -82,6 +79,7 @@ public class AlarmsAdapter extends RecyclerView.Adapter<AlarmsAdapter.AlarmHolde
             alarmTime = itemView.findViewById(R.id.item_alarm_time_text_view);
             activeSwitch = itemView.findViewById(R.id.item_alarm_active_switch);
             deleteBtn = itemView.findViewById(R.id.item_delete_image_btn);
+            snoozedState = itemView.findViewById(R.id.item_soozed_state);
 
             deleteBtn.setOnClickListener(v -> listener.onHolderClick(AlarmHolder.this, deleteBtn));
             alarmTime.setOnClickListener(v -> listener.onHolderClick(AlarmHolder.this, alarmTime));

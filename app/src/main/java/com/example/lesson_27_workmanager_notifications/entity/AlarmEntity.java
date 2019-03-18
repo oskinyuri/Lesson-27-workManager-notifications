@@ -28,6 +28,9 @@ public class AlarmEntity {
     @ColumnInfo (name = "worker_id")
     private String mWorkerID;
 
+    @ColumnInfo (name = "snoozed_state")
+    private boolean mSnoozed = false;
+
 
     public AlarmEntity(){
         mId = UUID.randomUUID().toString();
@@ -58,8 +61,15 @@ public class AlarmEntity {
         return mActive;
     }
 
+    /**
+     * Если будильник перестает быть активным, он также не может быть отложенным
+     * @param active состояние будильника
+     */
     public void setActive(boolean active) {
         mActive = active;
+
+        if (!active)
+            mSnoozed = false;
     }
 
     public String getWorkerID() {
@@ -68,5 +78,13 @@ public class AlarmEntity {
 
     public void setWorkerID(String workerID) {
         mWorkerID = workerID;
+    }
+
+    public boolean isSnoozed() {
+        return mSnoozed;
+    }
+
+    public void setSnoozed(boolean snoozed) {
+        mSnoozed = snoozed;
     }
 }

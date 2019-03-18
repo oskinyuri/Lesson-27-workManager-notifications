@@ -1,11 +1,12 @@
 package com.example.lesson_27_workmanager_notifications;
 
-import android.app.IntentService;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Vibrator;
 import android.util.Log;
 
@@ -20,7 +21,7 @@ import java.util.concurrent.Executors;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-public class AlarmForeGroundService extends IntentService {
+public class AlarmForeGroundService extends Service {
 
     private static final String TAG_FOREGROUND_SERVICE = "FOREGROUND_SERVICE";
 
@@ -40,15 +41,7 @@ public class AlarmForeGroundService extends IntentService {
     private AlarmEntity mAlarmEntity;
     private AlarmWorkerManager mWorkerManager;
     private ExecutorService mExecutorService;
-
-    /**
-     * Creates an IntentService.  Invoked by your subclass's constructor.
-     *
-     * @param name Used to name the worker thread, important only for debugging.
-     */
-    public AlarmForeGroundService(String name) {
-        super(name);
-    }
+    private Handler mHandler;
 
     @Nullable
     @Override
@@ -58,62 +51,24 @@ public class AlarmForeGroundService extends IntentService {
     }
 
     @Override
-    protected void onHandleIntent(@Nullable Intent intent) {
-        if(intent != null)
-        {
-            String action = intent.getAction();
-
-
-
-            switch (action)
-            {
-                case ACTION_START_FOREGROUND_SERVICE:
-                    startForegroundService();
-
-                    String workerId = intent.getStringExtra(EXTRA_WORKER_ID);
-                    getAlarm(workerId);
-
-                    startRingtone();
-                    break;
-                case ACTION_SNOOZE:
-                    stopRingtone();
-                    createSnoozeWorker();
-                    stopForegroundService();
-                    break;
-                case ACTION_TURN_OFF:
-                    stopRingtone();
-                    stopForegroundService();
-                    break;
-            }
-        }
-    }
-
-    @Override
     public void onCreate() {
         super.onCreate();
         mAlarmRepository = AlarmApp.getInstance().getAlarmRepository();
         mWorkerManager = new AlarmWorkerManager();
         mExecutorService = Executors.newCachedThreadPool();
+        mHandler = new Handler(Looper.getMainLooper());
         Log.d(TAG_FOREGROUND_SERVICE, "My foreground service onCreate().");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if(intent != null)
-        {
+        if (intent != null) {
             String action = intent.getAction();
 
-
-
-            switch (action)
-            {
+            switch (action) {
                 case ACTION_START_FOREGROUND_SERVICE:
-                    startForegroundService();
-
                     String workerId = intent.getStringExtra(EXTRA_WORKER_ID);
-                    getAlarm(workerId);
-
-                    startRingtone();
+                    startAlarm(workerId);
                     break;
                 case ACTION_SNOOZE:
                     stopRingtone();
@@ -122,6 +77,7 @@ public class AlarmForeGroundService extends IntentService {
                     break;
                 case ACTION_TURN_OFF:
                     stopRingtone();
+                    changeAlarmState();
                     stopForegroundService();
                     break;
             }
@@ -129,9 +85,25 @@ public class AlarmForeGroundService extends IntentService {
         return super.onStartCommand(intent, flags, startId);
     }
 
+    private void changeAlarmState() {
+        mAlarmEntity.setActive(false);
+        mExecutorService.execute(() -> mAlarmRepository.addAlarm(mAlarmEntity));
+    }
+
+    private void startAlarm(String workerId) {
+        mExecutorService.execute(() -> {
+            getAlarm(workerId);
+            mHandler.post(() -> {
+                startForegroundService();
+                startRingtone();
+            });
+        });
+    }
+
     private void createSnoozeWorker() {
         mAlarmEntity.setWorkerID(mWorkerManager.createSnoozeWorker());
-        mAlarmRepository.addAlarm(mAlarmEntity);
+        mAlarmEntity.setSnoozed(true);
+        mExecutorService.execute(() -> mAlarmRepository.addAlarm(mAlarmEntity));
     }
 
     private void stopRingtone() {
@@ -144,20 +116,17 @@ public class AlarmForeGroundService extends IntentService {
 
         Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         if (vibrator.hasVibrator())
-                vibrator.vibrate(mVibrationPattern, 1);
+            vibrator.vibrate(mVibrationPattern, 1);
     }
 
-    private void getAlarm(String workerId){
-        mExecutorService.execute(() -> {
-            if (workerId != null){
-                mAlarmEntity = mAlarmRepository.getAlarmViaWorkerID(workerId);
-            }
-        });
+    private void getAlarm(String workerId) {
+        if (workerId != null) {
+            mAlarmEntity = mAlarmRepository.getAlarmViaWorkerID(workerId);
+        }
     }
 
     /* Used to build and start foreground service. */
-    private void startForegroundService()
-    {
+    private void startForegroundService() {
         Log.d(TAG_FOREGROUND_SERVICE, "Start foreground service.");
 
         // Create notification default intent.
@@ -197,8 +166,8 @@ public class AlarmForeGroundService extends IntentService {
         startForeground(1, notification);
     }
 
-    private void stopForegroundService()
-    {
+    private void stopForegroundService() {
+
         Log.d(TAG_FOREGROUND_SERVICE, "Stop foreground service.");
 
         // Stop foreground service and remove the notification.

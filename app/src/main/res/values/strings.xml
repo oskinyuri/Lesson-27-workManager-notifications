@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Lesson-27-workmanager-notifications</string>
+    <string name="alarm_is_snoozed">Alarm is snoozed</string>
 </resources>
