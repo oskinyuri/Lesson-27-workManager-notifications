@@ -1,7 +1,6 @@
 package com.example.lesson_27_workmanager_notifications.alarmList;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
@@ -22,7 +21,7 @@ public class MainActivity extends AppCompatActivity implements AlarmView , Alarm
 
     private AlarmPresenter mPresenter;
 
-    //test
+
     private List<AlarmEntity> mData;
     private AlarmsAdapter mAdapter;
     private RecyclerView mRecyclerView;

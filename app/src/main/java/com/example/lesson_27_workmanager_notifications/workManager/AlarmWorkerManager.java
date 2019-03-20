@@ -24,8 +24,11 @@ public class AlarmWorkerManager {
 
         OneTimeWorkRequest alarmRequest = new OneTimeWorkRequest.Builder(AlarmWorker.class)
                 .setInitialDelay(delayTimeInSeconds, TimeUnit.SECONDS)
+                //Для теста, что бы не ждать минуту
+                //.setInitialDelay(10, TimeUnit.SECONDS)
                 .build();
         WorkManager.getInstance().enqueue(alarmRequest);
+
 
         return alarmRequest.getId().toString();
     }

@@ -93,10 +93,12 @@ public class AlarmForeGroundService extends Service {
     private void startAlarm(String workerId) {
         mExecutorService.execute(() -> {
             getAlarm(workerId);
-            mHandler.post(() -> {
+            startForegroundService();
+            startRingtone();
+            /*mHandler.post(() -> {
                 startForegroundService();
                 startRingtone();
-            });
+            });*/
         });
     }
 

@@ -4,6 +4,7 @@
     package="com.example.lesson_27_workmanager_notifications">
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application
         android:name=".AlarmApp"
         android:allowBackup="true"
